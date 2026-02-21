@@ -60,7 +60,7 @@ After loading the extension by the file path, you can use the functions provided
 
 ```sql
 LOAD './build/debug/extension/rusty_quack/rusty_quack.duckdb_extension';
-SELECT * FROM mortgage_table(100000.0, 240, 1.8);
+SELECT * FROM mortgage_table(100000.0, 120, 1.8);
 ```
 
 ```
