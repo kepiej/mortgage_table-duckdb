@@ -22,3 +22,4 @@ crate-type = ["staticlib"]
 [dependencies]
 duckdb = { version = "=1.4.4", features = ["loadable-extension"] }
 libduckdb-sys = "=1.4.4"
+mortgage_sim = { git = "https://github.com/kepiej/mortgage_sim.git", version = "0.1.0" }
