@@ -18,6 +18,7 @@ struct MortgageBindData {
     principal: f64,
     nperiods: i64,
     year_interest_rate: Vec<f64>,
+    mortgage_type: PaymentScheme,
 }
 
 #[repr(C)]
@@ -39,10 +40,18 @@ impl VTab for MortgageVTab {
         let principal: f64 = bind.get_parameter(0).to_int64() as f64;
         let nperiods: i64 = bind.get_parameter(1).to_int64();
         let year_interest_rate: f64 = bind.get_parameter(2).to_int64() as f64;
+        println!("{}", bind.get_parameter(3).to_string());
+        let mortgage_type_str: String = bind.get_parameter(3).to_string();
+        let mortgage_type: PaymentScheme = match mortgage_type_str.parse::<PaymentScheme>() {
+            Ok(payscheme) => payscheme,
+            Err(error) => panic!("Problem parsing the mortgage type: {error:?}"),
+        };
+
         Ok(MortgageBindData {
             principal,
             nperiods,
             year_interest_rate: vec![year_interest_rate / 100.0; nperiods as usize],
+            mortgage_type: mortgage_type,
         })
     }
 
@@ -66,7 +75,9 @@ impl VTab for MortgageVTab {
                 bind_data.nperiods,
                 bind_data.year_interest_rate.clone(),
             );
-            let pay: MortgagePayments = MortgagePayments::new(mort, PaymentScheme::FixedCapital);
+
+            let pay: MortgagePayments =
+                MortgagePayments::new(mort, bind_data.mortgage_type.clone());
 
             output
                 .flat_vector(0)
@@ -88,6 +99,7 @@ impl VTab for MortgageVTab {
             LogicalTypeHandle::from(LogicalTypeId::Float),
             LogicalTypeHandle::from(LogicalTypeId::Integer),
             LogicalTypeHandle::from(LogicalTypeId::Float),
+            LogicalTypeHandle::from(LogicalTypeId::Varchar),
         ])
     }
 
@@ -105,6 +117,10 @@ impl VTab for MortgageVTab {
                 "year_interest_rate".to_string(),
                 LogicalTypeHandle::from(LogicalTypeId::Float),
             ),
+            (
+                "type".to_string(),
+                LogicalTypeHandle::from(LogicalTypeId::Varchar),
+            ),
         ])
     }
 }
@@ -113,7 +129,7 @@ const EXTENSION_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[duckdb_entrypoint_c_api()]
 pub unsafe fn extension_entrypoint(con: Connection) -> Result<(), Box<dyn Error>> {
-    con.register_table_function::<MortgageVTab>("mortgage_table")
+    con.register_table_function::<MortgageVTab>(EXTENSION_NAME)
         .expect("Failed to register hello table function");
     Ok(())
 }
