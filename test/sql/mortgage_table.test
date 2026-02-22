@@ -6,7 +6,7 @@
 statement error
 SELECT * FROM mortgage_table(100000.0, 240, 1.8, "FixedMensualities");
 ----
-Catalog Error: Scalar Function with name mortgage_table does not exist!
+Catalog Error: Table Function with name mortgage_table does not exist!
 
 # Require statement will ensure the extension is loaded from now on
 require mortgage_table
