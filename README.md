@@ -1,5 +1,5 @@
 # Mortgage table extension
-This is an extension for duckdb to calculate monthly payments for mortgages.
+This is an extension for DuckDB to calculate monthly payments for mortgages. It provides a table functon `mortgage_table()` that returns an amortization schedule of a mortgage. It also provides the scalar function `PMT()` to calculate the periodic payment of an annuity equivalent to the PMT function in Excel.
 
 ## Dependencies
 In principle, these extensions can be compiled with the Rust toolchain alone. However, this template relies on some additional
@@ -98,6 +98,22 @@ SELECT * FROM mortgage_table(100000.0, 240, 1.8, "FixedMensualities");
 ├───────┴────────────────────┴────────────────────┴────────────────────┤
 │ 240 rows (40 shown)                                        4 columns │
 └──────────────────────────────────────────────────────────────────────┘
+```
+
+Calculate the periodic payment of an annuity using the scalar `PMT()` function (equivalent to that in Excel):
+
+```sql
+LOAD './build/debug/extension/mortgage_table/mortgage_table.duckdb_extension';
+SELECT PMT(0.018/12, 240, -100000);
+```
+
+```
+┌───────────────────────────────────┐
+│ pmt((0.018 / 12), 240, -100000.0) │
+│              double               │
+├───────────────────────────────────┤
+│         496.4660485877993         │
+└───────────────────────────────────┘
 ```
 
 ## Testing

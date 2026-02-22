@@ -1,6 +1,7 @@
 use duckdb::{
     core::{DataChunkHandle, LogicalTypeHandle, LogicalTypeId},
     duckdb_entrypoint_c_api,
+    vscalar::{ScalarFunctionSignature, VScalar},
     vtab::{BindInfo, InitInfo, TableFunctionInfo, VTab},
     Connection, Result,
 };
@@ -40,7 +41,6 @@ impl VTab for MortgageVTab {
         let principal: f64 = bind.get_parameter(0).to_int64() as f64;
         let nperiods: i64 = bind.get_parameter(1).to_int64();
         let year_interest_rate: f64 = bind.get_parameter(2).to_int64() as f64;
-        println!("{}", bind.get_parameter(3).to_string());
         let mortgage_type_str: String = bind.get_parameter(3).to_string();
         let mortgage_type: PaymentScheme = match mortgage_type_str.parse::<PaymentScheme>() {
             Ok(payscheme) => payscheme,
@@ -118,10 +118,52 @@ impl VTab for MortgageVTab {
                 LogicalTypeHandle::from(LogicalTypeId::Float),
             ),
             (
-                "type".to_string(),
+                "mortgage_type".to_string(),
                 LogicalTypeHandle::from(LogicalTypeId::Varchar),
             ),
         ])
+    }
+}
+
+struct PMTVScalar;
+impl VScalar for PMTVScalar {
+    type State = ();
+
+    unsafe fn invoke(
+        _: &Self::State,
+        input: &mut DataChunkHandle,
+        output: &mut dyn duckdb::vtab::arrow::WritableVector,
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let period_interest_rate: f64 = input.flat_vector(0).as_slice()[0];
+        let nperiods: i64 = input.flat_vector(1).as_slice()[0];
+        let principal: f64 = input.flat_vector(2).as_slice()[0];
+
+        // Mortgage expects a yearly interest rate.
+        let year_interest_rate: f64 = (1.0 + period_interest_rate).powf(12.0) - 1.0;
+
+        let mort: Mortgage = Mortgage::new(
+            -principal,
+            nperiods,
+            vec![year_interest_rate; nperiods as usize],
+        );
+
+        let pay: MortgagePayments = MortgagePayments::new(mort, PaymentScheme::FixedMensualities);
+
+        let mut output_vector = output.flat_vector();
+        output_vector.copy(&[pay.payments()[0]]);
+
+        Ok(())
+    }
+
+    fn signatures() -> Vec<ScalarFunctionSignature> {
+        vec![ScalarFunctionSignature::exact(
+            vec![
+                LogicalTypeId::Double.into(),  // Interest rate
+                LogicalTypeId::Integer.into(), // Number of periods
+                LogicalTypeId::Double.into(),  // Principal
+            ],
+            LogicalTypeId::Double.into(),
+        )]
     }
 }
 
@@ -130,6 +172,8 @@ const EXTENSION_NAME: &str = env!("CARGO_PKG_NAME");
 #[duckdb_entrypoint_c_api()]
 pub unsafe fn extension_entrypoint(con: Connection) -> Result<(), Box<dyn Error>> {
     con.register_table_function::<MortgageVTab>(EXTENSION_NAME)
-        .expect("Failed to register hello table function");
+        .expect("Failed to register mortgage_table table function");
+    con.register_scalar_function::<PMTVScalar>("PMT")
+        .expect("Failed to register PMT scalar function");
     Ok(())
 }
