@@ -38,9 +38,9 @@ impl VTab for MortgageVTab {
         bind.add_result_column("payments", LogicalTypeHandle::from(LogicalTypeId::Double));
         bind.add_result_column("capital", LogicalTypeHandle::from(LogicalTypeId::Double));
         bind.add_result_column("interest", LogicalTypeHandle::from(LogicalTypeId::Double));
-        let principal: f64 = bind.get_parameter(0).to_int64() as f64;
+        let principal: f64 = bind.get_parameter(0).to_string().parse::<f64>().unwrap();
         let nperiods: i64 = bind.get_parameter(1).to_int64();
-        let year_interest_rate: f64 = bind.get_parameter(2).to_int64() as f64;
+        let year_interest_rate: f64 = bind.get_parameter(2).to_string().parse::<f64>().unwrap();
         let mortgage_type_str: String = bind.get_parameter(3).to_string();
         let mortgage_type: PaymentScheme = match mortgage_type_str.parse::<PaymentScheme>() {
             Ok(payscheme) => payscheme,
