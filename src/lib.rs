@@ -11,8 +11,9 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use mortgage_sim::mortgage::Mortgage;
-use mortgage_sim::paymentschemes::{MortgagePayments, PaymentScheme};
+use mortgage_sim::mortgagepayments::MortgagePayments;
+use mortgage_sim::paymentschemes::PaymentScheme;
+use mortgage_sim::{mortgage::Mortgage, mortgagepayments::MonthlyPayment};
 
 #[repr(C)]
 struct MortgageBindData {
@@ -76,8 +77,7 @@ impl VTab for MortgageVTab {
                 bind_data.year_interest_rate.clone(),
             );
 
-            let pay: MortgagePayments =
-                MortgagePayments::new(mort, bind_data.mortgage_type.clone());
+            let pay: Vec<MonthlyPayment> = bind_data.mortgage_type.monthly_payments(mort);
 
             output
                 .flat_vector(0)
@@ -147,7 +147,7 @@ impl VScalar for PMTVScalar {
             vec![year_interest_rate; nperiods as usize],
         );
 
-        let pay: MortgagePayments = MortgagePayments::new(mort, PaymentScheme::FixedMensualities);
+        let pay: Vec<MonthlyPayment> = PaymentScheme::FixedMensualities.monthly_payments(mort);
 
         let mut output_vector = output.flat_vector();
         output_vector.copy(&[pay.payments()[0]]);
